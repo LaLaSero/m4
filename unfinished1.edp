@@ -1,0 +1,113 @@
+string data;
+{
+ifstream aaa("myname.txt");
+aaa >> data;
+}
+
+int xlen=100;
+int ylen=50;
+
+
+//load "msh3"
+//load "medit"
+
+real E0 = 7e10; // Young's Modulus
+real Emin = 0.001*E0;
+real nu = 0.33; //poisson's ratio
+real f1 = 0.0;  //t1
+real f2 = -1e6; //t2
+real sqrt2=sqrt(2);
+
+real Kappa = 1.0; // Diffusion equation constant
+real tau = 5.0e-4; // Diffusion Coefficient [from 0.0 to 2e-2]
+real dt = 2.0; // pseudo time interval
+real p=4.0;
+real change=1.0;
+real senscoef;
+real alpha=0.4;
+ // 2D mesh Create
+real L = 2.0, H = 1.0;
+real x0 = 0 , x1 = L ;
+real y0 = 0.0 , y1 = H*0.5*(1.0-1.0/3.0) , y2 = H*0.5*(1.0+1.0/3.0) , y3 = H ;
+int[int] l1=[2,2,0,1] ;//down, right, upper, left
+int[int] l2=[0,3,0,1] ;//down, right, upper, left
+int[int] l3=[0,2,2,1] ;//down, right, upper, left
+int xmeshnum=120;  //[60,120,180,240]
+int ymeshnum=20;  //[10,20,30,40]
+mesh Th1=square(xmeshnum,ymeshnum,[x0+(x1-x0)*x,y0+(y1-y0)*y],label=l1,flags=1); // bottom
+mesh Th2=square(xmeshnum,ymeshnum,[x0+(x1-x0)*x,y1+(y2-y1)*y],label=l2,flags=1); // middle: traction
+mesh Th3=square(xmeshnum,ymeshnum,[x0+(x1-x0)*x,y2+(y3-y2)*y],label=l3,flags=1); // upper
+mesh Th = Th1+Th2+Th3;
+
+
+// Define the Finite element space
+fespace Vh(Th,[P1,P1]);
+Vh [u1,u2], [v1,v2];
+fespace Vh1(Th,P2);
+Vh1 psi, vpsi, oldpsi=0.4, psierror,psitemp, dpsihat, vdpsihat;
+fespace Vh2(Th,P1);
+Vh2 rho,rho2;
+
+rho=0;
+for (int j=0;j<ylen;++j){
+  for (int i=0;i<xlen;++i){
+    int pos=j*xlen+i;
+    real xpos=i*L/xlen;
+    real ypos=H-j*H/ylen;
+    real ls=L/xlen*1.2;
+bool ifmat = (data(pos:pos)=="1");
+if (ifmat){
+    rho=rho+(x>xpos)*(x<xpos+ls)*(y>ypos)*(y<ypos+ls);
+    if (i==1){
+      rho=rho+(x<xpos+ls)*(y>ypos)*(y<ypos+ls);
+
+    }
+}
+}
+}
+rho2=(rho>0.1);
+oldpsi=rho2;
+problem RDE(psi,vpsi) = int2d(Th)(psi*vpsi)-int2d(Th)(oldpsi*vpsi) + int2d(Th)( dt*tau*(dx(psi)*dx(vpsi)+dy(psi)*dy(vpsi)) ) + on(3,psi=1.0);
+RDE;
+
+real psilo=0.01;
+real psihi=0.99;
+real vratio;
+real rerror=1;
+while (rerror>0.001){
+rho=psi>(0.5*psilo+0.5*psihi);
+//rho=rho*(1.0-(x>L-0.01)*(y<y1))*(1.0-(x>L-0.01)*(y>y2)); //nothing outside load
+vratio=int2d(Th)(rho)/H/L;
+rerror=abs(vratio-alpha)/alpha;
+cout << vratio << endl;
+if (vratio<alpha){
+psihi=0.5*psilo+0.5*psihi;
+ }
+  else{
+psilo=0.5*psilo+0.5*psihi;
+}
+}
+
+
+
+func E = Emin + (E0-Emin)*(rho)^p;		// Elastic modulus
+func lambda = E*nu*(1.0/((1.0+nu)*(1.0-nu)));	// Lame constant for plane stress
+func mu = E*(1.0/(2.0*(1.0+nu)));               // Lame constant
+
+problem elasticity([u1,u2],[v1,v2])=
+  int2d(Th)(
+// tofill
+  
+	      )
+  - int1d(Th,3)(f1*v1+f2*v2)
+  + on(1,u1=0,u2=0)
+  ;
+elasticity;
+real objective = int1d(Th,3)(f1*u1+f2*u2);
+cout << objective << endl;
+
+
+
+string caption="Compliance = "+ objective;
+plot(rho,fill=1, cmm=caption);
+
