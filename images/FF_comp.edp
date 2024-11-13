@@ -1,6 +1,6 @@
 string data;
 {
-ifstream aaa("cui1.txt");
+ifstream aaa("name_1.txt");
 aaa >> data;
 }
 

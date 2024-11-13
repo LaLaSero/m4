@@ -2,7 +2,7 @@ import os
 from PIL import Image
 import numpy as np
 
-folder_name = r'tegaki'
+folder_name = r'images'
 
 filelist = os.listdir(folder_name)
 
@@ -25,3 +25,4 @@ for filename in filelist:
         # テキストファイルに書き込む
         with open(txt_file_name, 'w') as fid:
             fid.write(data_str)
+            fid.write('\n')
