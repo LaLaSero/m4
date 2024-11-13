@@ -1,6 +1,6 @@
 string data;
 {
-ifstream aaa("ito.txt"); //画像変換した自刁E�Eファイル名を入力してください、E
+ifstream aaa("cui1.txt");
 aaa >> data;
 }
 
